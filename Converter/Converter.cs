@@ -1,37 +1,67 @@
-﻿namespace Converter
+﻿using Converter.Models;
+using System.IO;
+using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace Converter
 {
     public class Converter
     {
-        public bool InputStringNumbersAreValid(string? numbers)
+        private ConverterWordsModel? converterWords = JsonSerializer.Deserialize<ConverterWordsModel>(File.ReadAllText("Words.json"));
+
+        public ConversionResult ConvertNumbersToString(string? numbers)
         {
-            //not null or empty
-            // accept only 0-9 commas and whitespaces
+            var result = new ConversionResult();
 
-            throw new NotImplementedException();
-        }
+            if (string.IsNullOrEmpty(numbers))
+            {
+                result.ErrorMessage = "Input is empty.";
+                return result;
+            }
 
-        //Perhaps make the method throwable and throw custom exception instead of validation method.
-        //Validation then will be preformed in this method.
-        public string ConvertNumbersToString(string numbers)
-        {
-            //move validation here (?)
+            foreach (char c in numbers)
+            {
+                if ((c < '0' || c > '9') && (c != ' ' && c != ','))
+                {
+                    result.ErrorMessage = "Input contains unallowed symbols.";
+                    return result;
+                }
+            }
 
-            (int dollars, int cents) dollarsAndCents = DivideInputStringNumbers(numbers!);
+            if (numbers.Contains(',') && numbers.Split(',').Length > 2)
+            {
+                result.ErrorMessage = "Input must not contain more than one comma.";
+                return result;
+            }
+
+            (int dollars, int cents) dollarsAndCents = DivideInputStringNumbers(numbers);
+
+            if (dollarsAndCents.cents > 99)
+            {
+                result.ErrorMessage = "Cents should not be more than 99.";
+                return result;
+            }
+            if (dollarsAndCents.dollars > 999999999)
+            {
+                result.ErrorMessage = "Dollars should not be more than 999.999.999.";
+                return result;
+            }
+
 
             var dollars = ConvertNumberToWords(dollarsAndCents.dollars);
             var cents = ConvertNumberToWords(dollarsAndCents.cents);
 
-            var result = CombineWords(dollars, cents);
+            result.Currency = CombineWords(dollars, cents);
 
             return result;
         }
 
         private (int dollars, int cents) DivideInputStringNumbers(string numbers)
         {
-            //Divide numbers using comma as separator and put results in variables below
+            var parts = numbers.Split(',');
 
-            string stringDollars = "";
-            string stringCents = "";
+            string stringDollars = parts.Length > 0 ? parts[0] : numbers;
+            string stringCents = parts.Length > 1 ? parts[1] : "";
 
             var dollars = ConvertStringNumberToInt(stringDollars);
             var cents = ConvertStringNumberToInt(stringCents);
@@ -41,20 +71,77 @@
 
         private int ConvertStringNumberToInt(string number)
         {
-            //remove whitespaces and return int
-            throw new NotImplementedException();
-        }
+            if (string.IsNullOrEmpty(number) || string.IsNullOrWhiteSpace(number))
+            {
+                return 0;
+            }
 
-        private string ConvertNumberToWords(int number)
-        {
-            //Super complex algorithm here (use paper note)
-            throw new NotImplementedException();
+            string cleanedNumberString = string.Concat(number.Where(c => !char.IsWhiteSpace(c)));
+
+            return int.Parse(cleanedNumberString);
         }
 
         private string CombineWords(string dollars, string cents)
         {
-            //add "dollars" and "cents", finalize the output string
-            throw new NotImplementedException();
+            return dollars + "dollars and " + cents + "cents";
+        }
+
+        private string ConvertNumberToWords(int input)
+        {
+            if (converterWords == null)
+            {
+                throw new FileNotFoundException(" Words file was not found.");
+            }
+
+            var lastThreeDigits = input % 1000;
+
+            var resultString = GetWordsFromThreeDigits(lastThreeDigits);
+
+            for (int i = 0; input - input % 1000 > 0; i++)
+            {
+                input /= 1000;
+
+                lastThreeDigits = input % 1000;
+
+                var resultStringPart = GetWordsFromThreeDigits(lastThreeDigits);
+
+                resultString = resultStringPart + converterWords.Powers[i] + " " + resultString;
+            }
+
+            return resultString;
+        }
+
+        private string GetWordsFromThreeDigits(int input)
+        {
+            //return input.ToString();
+
+            if (input < 0 || input > 999)
+            {
+                throw new ArgumentException("Input integer should not be lower than 0 and greater than 999.");
+            }
+
+            string result = "";
+
+            //hundreds
+            if (input / 100 > 0)
+            {
+                result += converterWords.Digits[input / 100] + " " + converterWords.Powers[-1] + " ";
+            }
+
+            //below 19
+            if (input % 100 < 19)
+            {
+                result += converterWords.Digits[input % 100] + " ";
+                return result;
+            }
+
+            // from 20 to 99
+            var tens = (input / 10) % 10;
+            var ones = input % 10;
+
+            result += converterWords.Digits[((input / 10) % 10)*10] + "-" + converterWords.Digits[input % 10] + " ";
+
+            return result;
         }
     }
 }

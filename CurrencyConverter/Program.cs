@@ -10,27 +10,30 @@
 
             while (repeat)
             {
-                RequestInput();
+                var input = RequestInput();
+                var conversionResult = converter.ConvertNumbersToString(input);
 
-                var input = Console.ReadLine();
-
-                while (!converter.InputStringNumbersAreValid(input))
+                while (conversionResult.ErrorMessage != null)
                 {
-                    WriteInvalidInput();
-                    RequestInput();
-                    input = Console.ReadLine();
+                    WriteInvalidInput(conversionResult.ErrorMessage);
+
+                    input = RequestInput();
+                    conversionResult = converter.ConvertNumbersToString(input);
                 }
 
-                WriteOutput(converter.ConvertNumbersToString(input));
-                repeat = RequestRepeat();
+                WriteOutput(conversionResult.Currency!);
+
+                //repeat = RequestRepeat();
             }
         }
 
-        private static void RequestInput()
+        private static string? RequestInput()
         {
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("Enter the sum:");
             Console.ForegroundColor = ConsoleColor.White;
+
+            return Console.ReadLine();
         }
 
         private static bool RequestRepeat()
@@ -49,10 +52,10 @@
             return false;
         }
 
-        private static void WriteInvalidInput()
+        private static void WriteInvalidInput(string errorMessage)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Invalid input.");
+            Console.WriteLine(errorMessage);
             Console.ForegroundColor = ConsoleColor.White;
         }
 
